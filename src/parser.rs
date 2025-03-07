@@ -10,6 +10,7 @@ type KindIdMap<'a> = BTreeMap<TokenKind, &'a str>;
 
 pub struct Parser<'a> {
   lexer: Lexer<'a>,
+  tk_stack: Vec<Token<'a>>,
   expect_list: ExpectList<'a>,
   kind_id_map: KindIdMap<'a>,
   subparser: SubParserList<'a>,
@@ -116,9 +117,11 @@ impl<'a> Parser<'a> {
     let kind_id_map = Self::get_kind_id_map(Rc::new(&expect_list));
     let subparser = SubParser::get_subparser_list();
     let ast = Ast::new();
+    let tk_stack = Vec::new();
 
     Parser {
       lexer,
+      tk_stack,
       expect_list,
       kind_id_map,
       subparser,
@@ -138,13 +141,11 @@ impl<'a> Parser<'a> {
           match token.get_kind() {
             TokenKind::Fun => {
               let new_node = current.add_node(AstNode::new(token, AstKind::Fun));
-              let subparser = *self.subparser.get("fun").unwrap();
-              subparser.parse(self, new_node);
+              self.subparse(&TokenKind::Fun, new_node);
             },
             TokenKind::Let => {
               let new_node = current.add_node(AstNode::new(token, AstKind::Let));
-              let subparser = *self.subparser.get("stmt_let").unwrap();
-              subparser.parse(self, new_node);
+              self.subparse(&TokenKind::Let, new_node);
             },
             _ => panic!("Invalid token (Parser::parse)"),
           }
@@ -164,13 +165,15 @@ impl<'a> Parser<'a> {
       match token_option {
         Some(token) => {
           let kind = token.get_kind();
-          let id = match self.kind_id_map.get(&kind) {
-            Some(id) => *id,
-            None => panic!("Invalid token (Parser::parse_fn)"),
+          match kind {
+            TokenKind::Bad(msg) => {
+              current.add_node(AstNode::new(token, AstKind::Bad(msg)));
+              return;
+            },
+            _ => {},
           };
-          let subparser = *self.subparser.get(id).unwrap();
           let new_node = current.add_node(AstNode::new(token, AstKind::Chisato));
-          subparser.parse(self, new_node);
+          self.subparse(&kind, new_node);
         },
         None => break,
       }
@@ -182,6 +185,9 @@ impl<'a> Parser<'a> {
   pub fn get_expect(&self, id: &str) -> Vec<TokenKind> {
     self.expect_list.get(id).unwrap().clone()
   }
+  pub fn get_kind_id(&self, kind: &TokenKind) -> &'a str {
+    self.kind_id_map.get(kind).unwrap()
+  }
   pub fn subparse(&mut self, id: &TokenKind, node: &mut AstNode<'a>) {
     let id = *self.kind_id_map.get(id).unwrap();
     let subparser = *self.subparser.get(id).unwrap();
@@ -192,6 +198,15 @@ impl<'a> Parser<'a> {
   }
   pub fn lexer_peek(&mut self) -> Option<&Token<'a>> {
     self.lexer.peek()
+  }
+  pub fn push_token(&mut self, token: Token<'a>) {
+    self.tk_stack.push(token);
+  }
+  pub fn pop_token(&mut self) -> Option<Token<'a>> {
+    self.tk_stack.pop()
+  }
+  pub fn tk_stack_empty(&self) -> bool {
+    self.tk_stack.is_empty()
   }
 }
 

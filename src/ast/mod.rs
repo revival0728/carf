@@ -2,19 +2,21 @@ pub mod token;
 
 use token::Token;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AstKind {
   Root,
   Fun,
   Let,
   Stmt,
   Expr,
+  Call,
+  Args,
   Identifier,
   Literal,
   Operator,
 
   // Temporary
   Chisato,
-  Paren,
 
   // Error
   Bad(&'static str),
@@ -48,8 +50,8 @@ impl<'a> AstNode<'a> {
   pub fn get_token(&self) -> &Token<'a> {
     &self.token
   }
-  pub fn get_kind(&self) -> &AstKind {
-    &self.kind
+  pub fn get_kind(&self) -> AstKind {
+    self.kind
   }
   pub fn set_kind(&mut self, kind: AstKind) {
     self.kind = kind;

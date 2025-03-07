@@ -71,6 +71,7 @@ pub enum TokenKind {
   Other,
   Head,
   Union(u8),
+  Empty,
 }
 
 pub fn sym_token_map<'a>(token: &'a str) -> TokenKind {
@@ -326,6 +327,12 @@ impl Token<'_> {
   pub fn new_bad(msg: &'static str) -> Token<'static> {
     Token {
       kind: TokenKind::Bad(msg),
+      value: "",
+    }
+  }
+  pub fn new_empty() -> Token<'static> {
+    Token {
+      kind: TokenKind::Empty,
       value: "",
     }
   }
