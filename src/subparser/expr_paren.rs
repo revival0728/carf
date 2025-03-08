@@ -34,7 +34,7 @@ fn parse<'a>(parser: &mut Parser<'a>, node: &mut AstNode<'a>) -> Option<AstKind>
   assert_eq!(node.child_count(), 1);
   match node[0].get_kind() {
     AstKind::Args => node.set_kind(AstKind::Call),
-    AstKind::Operator | AstKind::Expr => node.set_kind(AstKind::Expr),
+    AstKind::BinOper | AstKind::Expr => node.set_kind(AstKind::Expr),
     AstKind::Identifier | AstKind::Literal => node.set_kind(AstKind::ExprOrCall),
     _ => super::error(node, "Expected Args or Expr"),
   };

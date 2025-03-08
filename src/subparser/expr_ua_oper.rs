@@ -15,5 +15,5 @@ macro_rules! add_subparser {
   }
 }
 
-add_subparser!(expr_u_dminus, Operator);
-add_subparser!(expr_u_dplus, Operator);
+add_subparser!(expr_u_dminus, BinOper);
+add_subparser!(expr_u_dplus, BinOper);

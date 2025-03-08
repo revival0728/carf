@@ -13,7 +13,7 @@ pub enum AstKind {
   Args,
   Identifier,
   Literal,
-  Operator,
+  BinOper,
 
   // Temporary
   Chisato,

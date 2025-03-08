@@ -15,5 +15,5 @@ macro_rules! add_subparser {
   }
 }
 
-add_subparser!(expr_u_minus, Operator);
-add_subparser!(expr_u_not, Operator);
+add_subparser!(expr_u_minus, BinOper);
+add_subparser!(expr_u_not, BinOper);
