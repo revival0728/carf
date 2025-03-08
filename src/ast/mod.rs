@@ -17,9 +17,14 @@ pub enum AstKind {
 
   // Temporary
   Chisato,
+  ExprOrCall,
 
   // Error
   Bad(&'static str),
+
+  // Signal
+  GrapArgs,
+  PushToStk,
 }
 
 pub struct AstNode<'a> {
@@ -47,6 +52,9 @@ impl<'a> AstNode<'a> {
     self.children.push(node);
     self.children.last_mut().unwrap()
   }
+  pub fn pop_node(&mut self) -> Option<AstNode<'a>> {
+    self.children.pop()
+  }
   pub fn get_token(&self) -> &Token<'a> {
     &self.token
   }
@@ -56,6 +64,9 @@ impl<'a> AstNode<'a> {
   pub fn set_kind(&mut self, kind: AstKind) {
     self.kind = kind;
   }
+  pub fn child_count(&self) -> usize {
+    self.children.len()
+  }
 }
 
 impl AstNode<'_> {
@@ -64,6 +75,13 @@ impl AstNode<'_> {
       token: Token::new_head(),
       kind: AstKind::Root,
       children: Vec::new(),
+    }
+  }
+  pub fn new_empty() -> AstNode<'static> {
+    AstNode {
+      token: Token::new_empty(),
+      kind: AstKind::Chisato,
+      children: Vec::new()
     }
   }
 }

@@ -6,26 +6,16 @@ macro_rules! add_subparser {
         SubParser::new(parse)
       }
 
-      fn parse<'a>(_parser: &mut Parser<'a>, node: &mut AstNode<'a>) {
+      fn parse<'a>(parser: &mut Parser<'a>, node: &mut AstNode<'a>) -> Option<AstKind> {
         node.set_kind(AstKind::$kind);
-      }
-      fn error(_parser: &mut Parser, node: &mut AstNode) {
-        node.set_kind(AstKind::Bad(stringify!(Error while parsing $name)));
+        if !super::super::add_b_exprlike(parser, node) { return None }
+        if !super::super::add_a_exprlike(parser, node) { return None }
+        Some(AstKind::PushToStk)
       }
     }
   };
 }
 
-// TODO: change to expt_co_or_basic (expect comma or basic)
-add_subparser!(expr_identifer, Identifier);
-add_subparser!(expr_int, Literal);
-add_subparser!(expr_float, Literal);
-add_subparser!(expr_char, Literal);
-add_subparser!(expr_string, Literal);
-
-add_subparser!(expr_u_not, Operator);
-add_subparser!(expr_u_dminus, Operator);
-add_subparser!(expr_u_dplus, Operator);
 add_subparser!(expr_b_equal, Operator);
 add_subparser!(expr_b_nequal, Operator);
 add_subparser!(expr_b_less, Operator);

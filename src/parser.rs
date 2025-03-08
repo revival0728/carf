@@ -10,7 +10,7 @@ type KindIdMap<'a> = BTreeMap<TokenKind, &'a str>;
 
 pub struct Parser<'a> {
   lexer: Lexer<'a>,
-  tk_stack: Vec<Token<'a>>,
+  node_stk: Vec<AstNode<'a>>,
   expect_list: ExpectList<'a>,
   kind_id_map: KindIdMap<'a>,
   subparser: SubParserList<'a>,
@@ -55,16 +55,15 @@ impl<'a> Parser<'a> {
     add_expect!("stmt_for", For, Identifier, In, Union(0), Union(1));
     add_expect!("expr_char", Char);
     add_expect!("expr_paren", LParen, Union(0), RParen); // TODO: Tell it is expr or function call
+    add_expect!("expr_args", Comma, Union(0));
     add_expect!("expr_indexing", LIndex, Union(0), RIndex);
-    add_expect!("expr_u_minus", Minus, Union(0));
     add_expect!("expr_identifer", Identifier);
     add_expect!("expr_integer", Int);
     add_expect!("expr_float", Float);
     add_expect!("expr_string", String);
-
-    //TODO: Check if Ast is correct
     add_expect!("expr_u_not", Not);
     add_expect!("expr_u_dplus", DPlus);
+    add_expect!("expr_u_minus", Minus);
     add_expect!("expr_u_dminus", DMinus);
     add_expect!("expr_b_equal", Equal);
     add_expect!("expr_b_plus", Plus);
@@ -117,11 +116,11 @@ impl<'a> Parser<'a> {
     let kind_id_map = Self::get_kind_id_map(Rc::new(&expect_list));
     let subparser = SubParser::get_subparser_list();
     let ast = Ast::new();
-    let tk_stack = Vec::new();
+    let node_stk = Vec::new();
 
     Parser {
       lexer,
-      tk_stack,
+      node_stk,
       expect_list,
       kind_id_map,
       subparser,
@@ -147,6 +146,7 @@ impl<'a> Parser<'a> {
               let new_node = current.add_node(AstNode::new(token, AstKind::Let));
               self.subparse(&TokenKind::Let, new_node);
             },
+            TokenKind::EOF => break,
             _ => panic!("Invalid token (Parser::parse)"),
           }
         },
@@ -158,22 +158,68 @@ impl<'a> Parser<'a> {
     &self.ast
   }
   pub fn parse_fn(&mut self, node: &mut AstNode<'a>) {
+    if !self.node_stk_empty() {
+      node.set_kind(AstKind::Bad("Found redundant Identifier or Expr"));
+      return;
+    }
     let current = node;
     loop {
       let token_option = self.lexer.next();
-      // TODO: Find SemiColon and let it next token be new stmt
       match token_option {
         Some(token) => {
           let kind = token.get_kind();
+          // Check if it is a stmt now
           match kind {
+            TokenKind::EOF => {
+              current.set_kind(AstKind::Bad("Expected some token but reached EOF"));
+              return;
+            },
             TokenKind::Bad(msg) => {
               current.add_node(AstNode::new(token, AstKind::Bad(msg)));
               return;
             },
+            TokenKind::SemiColon => {
+              current.set_kind(AstKind::Stmt);
+              // TODO: check stmt is valid in root level
+              while !self.node_stk_empty() {
+                current.add_node(self.pop_node().unwrap());
+              }
+              return;
+            }
             _ => {},
           };
+          // If not a stmt or expr keep parsing
           let new_node = current.add_node(AstNode::new(token, AstKind::Chisato));
-          self.subparse(&kind, new_node);
+          match self.subparse(&kind, new_node) {
+            Some(kind) => {
+              match kind {
+                AstKind::PushToStk => {
+                  let node = match new_node.pop_node() {
+                    Some(node) => node,
+                    None => panic!("Parser::parse_fn(): new_node did not added but popped")
+                  };
+                  self.node_stk.push(node);
+                  return;
+                },
+                AstKind::GrapArgs => {
+                  current.pop_node();
+                  while !self.node_stk_empty() {
+                    current.add_node(self.pop_node().unwrap());
+                  }
+                  current.set_kind(AstKind::Args);
+                }
+                _ => {
+                  current.set_kind(kind);
+                }
+              };
+            },
+            None => {},
+          };
+          // If current node a ExprLike
+          match current.get_kind() {
+            AstKind::Expr | AstKind::Call | AstKind::Operator => return,
+            _ => {},
+          };
         },
         None => break,
       }
@@ -188,10 +234,10 @@ impl<'a> Parser<'a> {
   pub fn get_kind_id(&self, kind: &TokenKind) -> &'a str {
     self.kind_id_map.get(kind).unwrap()
   }
-  pub fn subparse(&mut self, id: &TokenKind, node: &mut AstNode<'a>) {
+  pub fn subparse(&mut self, id: &TokenKind, node: &mut AstNode<'a>) -> Option<AstKind> {
     let id = *self.kind_id_map.get(id).unwrap();
     let subparser = *self.subparser.get(id).unwrap();
-    subparser.parse(self, node);
+    subparser.parse(self, node)
   }
   pub fn lexer_next(&mut self) -> Option<Token<'a>> {
     self.lexer.next()
@@ -199,14 +245,14 @@ impl<'a> Parser<'a> {
   pub fn lexer_peek(&mut self) -> Option<&Token<'a>> {
     self.lexer.peek()
   }
-  pub fn push_token(&mut self, token: Token<'a>) {
-    self.tk_stack.push(token);
+  pub fn push_node(&mut self, token: AstNode<'a>) {
+    self.node_stk.push(token);
   }
-  pub fn pop_token(&mut self) -> Option<Token<'a>> {
-    self.tk_stack.pop()
+  pub fn pop_node(&mut self) -> Option<AstNode<'a>> {
+    self.node_stk.pop()
   }
-  pub fn tk_stack_empty(&self) -> bool {
-    self.tk_stack.is_empty()
+  pub fn node_stk_empty(&self) -> bool {
+    self.node_stk.is_empty()
   }
 }
 
