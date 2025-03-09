@@ -217,7 +217,7 @@ impl<'a> Parser<'a> {
           };
           // If current node a ExprLike
           match current.get_kind() {
-            AstKind::Expr | AstKind::Call | AstKind::BinOper | AstKind::Args => return,
+            AstKind::Expr | AstKind::Call | AstKind::BinOper | AstKind::Args | Astkind::ExprOrCall => return,
             _ => {},
           };
         },
