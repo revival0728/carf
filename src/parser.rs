@@ -194,7 +194,7 @@ impl<'a> Parser<'a> {
             Some(kind) => {
               match kind {
                 AstKind::PushToStk => {
-                  let node = match new_node.pop_node() {
+                  let node = match current.pop_node() {
                     Some(node) => node,
                     None => panic!("Parser::parse_fn(): new_node did not added but popped")
                   };
